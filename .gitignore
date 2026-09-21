@@ -1,0 +1,54 @@
+# Local Smart File Organizer data
+Inbox/
+Organized/
+
+# n8n local data
+.n8n/
+n8n-data/
+n8n-backup/
+
+# Secrets
+.env
+.env.*
+!.env.example
+credentials.json
+client_secret*.json
+service-account*.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.old
