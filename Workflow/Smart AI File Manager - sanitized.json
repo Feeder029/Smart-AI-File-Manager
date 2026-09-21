@@ -1,0 +1,1522 @@
+{
+  "name": "Smart AI File Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.filePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1888,
+        288
+      ],
+      "id": "63986157-8e16-4dc5-ae1f-fc0fb2a8c103",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "command": "dir /b /s /a-d \"<SMART_FILE_ORGANIZER>\\Inbox\\*\" 2>nul"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -2240,
+        288
+      ],
+      "id": "e81a00dd-0e93-4b8d-ac48-0c45d79b6dae",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "jsCode": "const binary = $input.first().binary?.data;\n\nif (!binary) {\n  throw new Error('No file found');\n}\n\nconst fileName = binary.fileName;\n\nreturn [\n  {\n    json: {\n      fileName,\n      filePath: `C:\\\\SmartFileOrganizer\\\\Inbox\\\\${fileName}`,\n      mimeType: binary.mimeType,\n      fileExtension: binary.fileExtension,\n      fileSize: binary.fileSize\n    },\n    binary: {\n      data: binary\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        288
+      ],
+      "id": "c0bb405b-2823-4550-9231-0c833e2c39ee",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a file classification system.\n\nClassify the file into exactly ONE category:\n\nCareer\nFinance\nSchool\nProjects\nPersonal\nDocuments\nMedia\nOther\n\nThe most important rule:\n\nCLASSIFY THE FILE BASED ON ITS PRIMARY PURPOSE, NOT SIMPLY ON WORDS OR TOPICS FOUND INSIDE IT.\n\nFor example, a resume containing programming skills, software projects, Python, Flask, or other technical information is still CAREER because its primary purpose is to represent a person's professional qualifications.\n\nClassification guidelines:\n\n1. Career\n\nChoose Career when the file is primarily related to employment, professional work, job searching, or professional qualifications.\n\nExamples:\n\n* Resume\n* CV\n* Cover letter\n* Job application\n* Portfolio\n* Employment history\n* Work experience\n* Professional qualifications\n* Job-related certificates\n* Professional profile\n* LinkedIn-related documents\n\nIMPORTANT:\nIf a resume, CV, portfolio, or job application contains programming, software projects, technical skills, education, or work experience, classify it as CAREER, not Projects or School.\n\n2. Finance\n\nChoose Finance when the primary purpose is financial or monetary information.\n\nExamples:\n\n* Receipts\n* Invoices\n* Bills\n* Bank statements\n* Payment records\n* Budgets\n* Taxes\n* Financial reports\n* Financial transactions\n\n3. School\n\nChoose School when the primary purpose is academic or educational.\n\nExamples:\n\n* Assignments\n* Exams\n* Class notes\n* Research papers\n* Academic reports\n* School records\n* Study materials\n* Academic presentations\n\nIMPORTANT:\nA school project about programming or software is still SCHOOL if it was created primarily for academic purposes.\n\n4. Projects\n\nChoose Projects when the file is primarily part of a personal, technical, creative, or software project.\n\nExamples:\n\n* Source code\n* Project source files\n* Technical documentation\n* Software project files\n* Project specifications\n* Development notes\n* UI designs for a project\n* Project assets\n\nIMPORTANT:\nDo NOT choose Projects simply because a file mentions programming, software, coding, or technical skills.\n\n5. Personal\n\nChoose Personal when the primary purpose is personal records or private personal information.\n\nExamples:\n\n* Personal identification\n* Personal records\n* Family records\n* Personal documents\n* Private information\n* Personal correspondence\n\n6. Documents\n\nChoose Documents when the file is a general-purpose document that does not clearly belong to Career, Finance, School, Projects, or Personal.\n\n7. Media\n\nChoose Media when the file's primary purpose is media.\n\nExamples:\n\n* Photos\n* Images\n* Artwork\n* Wallpapers\n* Music\n* Audio recordings\n* Videos\n* Animations\n\nAn ordinary photo of a person, animal, object, place, food, or scenery should normally be Media unless the image is primarily a record or document belonging to another category.\n\n8. Other\n\nChoose Other only when the file cannot reasonably be classified into any of the categories above.\n\nDECISION RULES:\n\n1. Determine what the file is primarily FOR.\n2. Do not classify based only on individual keywords.\n3. Consider the entire filename and available content.\n4. If multiple categories appear in the file, choose the category representing its PRIMARY PURPOSE.\n5. Career takes priority over Projects when a resume, CV, portfolio, or job application contains technical or project information.\n6. School takes priority over Projects when a technical or programming file is primarily created for academic purposes.\n7. Media takes priority for ordinary photos, videos, and audio.\n8. Do not guess information that is not supported by the file.\n9. Choose exactly ONE category.\n\nReturn ONLY the category name.\n\nFilename:\n{{ $('Code in JavaScript').item.json.fileName }}\n\nFile type:\n{{ $('Code in JavaScript').item.json.mimeType }}\n\nFile content:\n{{ $json.text || 'No text content available.' }}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        544,
+        544
+      ],
+      "id": "0878ad4d-0ea0-4f0e-a698-a13dc0e78711",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:3b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        544,
+        720
+      ],
+      "id": "2027c5ee-eafc-49ea-924e-a14e9a6f5714",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {}
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const category = $json.text?.trim();\n\nconst folders = {\n  Career: 'Career',\n  Finance: 'Finance',\n  School: 'School',\n  Projects: 'Projects',\n  Personal: 'Personal',\n  Documents: 'Documents',\n  Media: 'Media',\n  Other: 'Other'\n};\n\nconst folder = folders[category] || 'Other';\n\nreturn [\n  {\n    json: {\n      category,\n      destination: `C:\\\\SmartFileOrganizer\\\\Organized\\\\${folder}`\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        544
+      ],
+      "id": "da43f01e-9233-4c65-8f2c-908f302a71cd",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "command": "=mkdir \"{{ $('Code in JavaScript1').item.json.destination }}\" 2>nul"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        464
+      ],
+      "id": "ab8c69e3-59e0-44b6-9f99-f3934de83c51",
+      "name": "Execute Command1"
+    },
+    {
+      "parameters": {
+        "command": "=move \"{{ $('Code in JavaScript').item.json.filePath }}\" \"{{ $('Code in JavaScript1').item.json.destination }}\\\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        560
+      ],
+      "id": "71a06534-aef5-452d-9c81-e71f6a6976b0",
+      "name": "Execute Command2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e203b1ba-bccc-41a0-b256-be7d05a33513",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "=File Not Found",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1264,
+        544
+      ],
+      "id": "aac49f82-de02-46c2-9138-5159e3fe45df",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "command": "=dir /s /b /ad \"{{ $json.destination }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        544
+      ],
+      "id": "ce951d4a-c43f-4743-8b4f-e6f698b6a1fd",
+      "name": "Execute Command3",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "181049e2-14d6-4991-8aab-3dfa554e8a7d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "37c2ca69-40d9-441f-baed-94083472531c",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "html",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "677d495a-5ecd-4e97-a5d1-b7113091863c",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "txt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6cd33541-adf9-4b95-8b09-fbbbe9a249c3",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "csv",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "448f908e-4115-4e03-a9fa-8f890ae49afe",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "json",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "025d9d76-0a60-4116-8036-23c97a996630",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "xml",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9fb7f6cf-3c2a-4972-9465-8eca25da8100",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "xls",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "edfb5cf2-d5fc-41ac-b127-b1c9ad46a77b",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "xlsx",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "07f0c2de-76c9-4079-8b3d-49f55078db93",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "ods",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "469008d2-6b7a-4399-9750-2a3b381b6bdc",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "rtf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "addb6ed2-f1af-4cf2-bc66-c7789eaa6c88",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "ics",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -992,
+        -832
+      ],
+      "id": "1b836cf4-d4d0-4931-994c-61f759c9b13f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        -1040
+      ],
+      "id": "db04b38a-025a-43a9-994a-342f9720dad1",
+      "name": "Extract from File7"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        -832
+      ],
+      "id": "91993218-a88e-47ff-ac78-42fda15c9ac0",
+      "name": "Extract from File4"
+    },
+    {
+      "parameters": {
+        "operation": "html",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -1136
+      ],
+      "id": "c8be9c3e-6b7f-4489-b711-158ec26a1537",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -944
+      ],
+      "id": "768ea425-9442-482d-9266-7df09f3abc6c",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        -1216
+      ],
+      "id": "bddf5a2e-0954-4a04-9849-314894a1b12a",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        -544
+      ],
+      "id": "a6f11778-ecdc-49e6-88bf-7f793c327252",
+      "name": "Extract from File10"
+    },
+    {
+      "parameters": {
+        "operation": "xls",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        -640
+      ],
+      "id": "73687eef-091d-49f0-a96d-fd5d4b091923",
+      "name": "Extract from File9"
+    },
+    {
+      "parameters": {
+        "operation": "xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -736
+      ],
+      "id": "a57ac3b6-c0fc-431b-85b0-306b4ceb6583",
+      "name": "Extract from File8"
+    },
+    {
+      "parameters": {
+        "operation": "rtf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        -336
+      ],
+      "id": "0b99a66d-75d8-4e89-b560-23c18d76ea5a",
+      "name": "Extract from File6"
+    },
+    {
+      "parameters": {
+        "operation": "ods",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        -432
+      ],
+      "id": "bee06cb1-1c4c-462f-a82a-26b1b64b5f56",
+      "name": "Extract from File5"
+    },
+    {
+      "parameters": {
+        "operation": "fromIcs",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        -224
+      ],
+      "id": "51c31695-886c-4c08-8a20-5597cef9be6a",
+      "name": "Extract from File3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ext = ($json.fileExtension || '').toLowerCase();\n\nconst groups = {\n  document: [\n    'pdf', 'txt', 'html', 'csv', 'json',\n    'xml', 'xls', 'xlsx', 'ods', 'rtf', 'ics'\n  ],\n\n  image: [\n    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'\n  ],\n\n  code: [\n    'py', 'js', 'ts', 'dart', 'java',\n    'php', 'c', 'cpp', 'cs', 'css'\n  ],\n\n  audio: [\n    'mp3', 'wav', 'flac', 'm4a', 'ogg'\n  ],\n\n  video: [\n    'mp4', 'mkv', 'avi', 'mov', 'webm'\n  ],\n\n  archive: [\n    'zip', 'rar', '7z', 'tar', 'gz'\n  ],\n\n  application: [\n    'apk', 'exe', 'msi', 'appx'\n  ]\n};\n\nlet fileType = 'other';\n\nfor (const [type, extensions] of Object.entries(groups)) {\n  if (extensions.includes(ext)) {\n    fileType = type;\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    ...$json,\n    fileType\n  },\n  binary: $binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        288
+      ],
+      "id": "0d0b15d2-b5c9-4d57-bd39-8b373a418255",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "document",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e38289a1-ea1d-41c0-9fec-e551f60df0a2"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "61a8a5c6-5bcf-447d-ad1f-e35085940cd6",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "88336d27-ba7f-41d1-a127-d6407666eb32",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "code",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c99fded5-2ad9-40a5-bffb-b10cb19625ad",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "87161a2d-053b-4727-a668-dcd3dc51bf1f",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f881cde3-6742-489d-ade4-a68a7e30f673",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "archive",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "053849d4-ae3a-4987-8dd6-5979acff3fcf",
+                    "leftValue": "={{ $json.fileType }}",
+                    "rightValue": "applciation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        208
+      ],
+      "id": "c2372679-5713-4a7d-8c42-c4020fac4bd6",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "numberInputs": 10
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        96,
+        -816
+      ],
+      "id": "6aa2fc39-d804-49a9-872f-ea236a8e254d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json.stdout || '';\n\nconst files = output\n  .split(/\\r?\\n/)\n  .map(path => path.trim())\n  .filter(Boolean);\n\nreturn files.map(filePath => ({\n  json: {\n    filePath\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2064,
+        288
+      ],
+      "id": "a5baf1bb-7c65-4463-aedd-2b1fff656caf",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.filePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -672,
+        384
+      ],
+      "id": "e9d17bf5-6588-42f7-9c56-9661dbd959c3",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const file = $input.first().binary.data;\n\nconst text = Buffer.from(file.data, 'base64').toString('utf8');\n\nreturn [{\n  json: {\n    ...$json,\n    content: text\n  },\n  binary: {\n    data: file\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        384
+      ],
+      "id": "6baf57b3-43ef-4f35-85a7-bca4fbd6501e",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        336,
+        512
+      ],
+      "id": "a204514a-f3a2-4d42-9cd0-f348db264894",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.filePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -864,
+        32
+      ],
+      "id": "3fcc9a25-d42d-4acf-8557-39e6391f035d",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a file classification system.\n\nYour task is to determine the most appropriate category for the file based on its filename, file type, and content.\n\nChoose exactly ONE category:\n\nCareer\nFinance\nSchool\nProjects\nPersonal\nDocuments\nMedia\nOther\n\nGuidelines:\n\n* Career: work, employment, resumes, CVs, job applications, professional records, or career-related content.\n* Finance: money, banking, payments, receipts, invoices, bills, budgets, taxes, or financial records.\n* School: education, classes, assignments, exams, research, academic notes, or school records.\n* Projects: software, programming, development, designs, technical work, or project-related content.\n* Personal: personal records, identification, private information, or content primarily related to the user's personal affairs.\n* Documents: general documents that do not clearly belong to another category.\n* Media: images, photos, artwork, audio, video, or other general media.\n* Other: files that cannot reasonably be classified into any of the categories above.\n\nUse the available evidence to determine the category.\n\nPrioritize the actual content over the filename when they conflict.\n\nDo not assume the user's intent or ownership of the file.\n\nDo not guess information that is not supported by the file.\n\nChoose the category that best represents the file's primary purpose or content.\n\nReturn ONLY the category name.\n\nFilename:\n{{ $json.fileName }}\n\nFile type:\n{{ $json.mimeType }}\n\nFile content:\n{{ $json.content || 'No text content available.' }}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -416,
+        32
+      ],
+      "id": "4cb505a1-a858-4843-8c5f-270b505ce7cc",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": "gemma3:4b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        176
+      ],
+      "id": "ba50af1c-7f7b-488d-96b2-dcd4f1faf41e",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {}
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -896,
+        560
+      ],
+      "id": "b7852b17-3294-4e0e-a059-f1895c3bfc97",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "content": "Document Handling",
+        "height": 1168,
+        "width": 1440,
+        "color": "#7B4C6F"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1104,
+        -1232
+      ],
+      "typeVersion": 1,
+      "id": "d4567ad3-0fea-4461-866d-b5c58dcdacea",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "File Direction Handling",
+        "height": 560,
+        "width": 1504,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        496,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "96042cec-7052-4fe0-8ee0-364d8e601a2b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "File Reader Handling",
+        "height": 432,
+        "width": 1376,
+        "color": "#7A9F14"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2496,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "05ff8815-9f42-4a1f-8e72-b27f199bdf66",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Image Handling",
+        "height": 304,
+        "width": 816,
+        "color": "#3D8038"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -960,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "161bcfe1-538e-46bb-9267-5c75a741b646",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "Code handling",
+        "height": 208,
+        "width": 464,
+        "color": "#7A1F1F"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -720,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "b59b7626-61b7-4b7a-8187-19d9c4045ed6",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "Direct Handle",
+        "height": 272,
+        "width": 288,
+        "color": "#976621"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1040,
+        528
+      ],
+      "typeVersion": 1,
+      "id": "5fd54958-b3fa-42b2-ba33-4a846712980b",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "<SMART_FILE_ORGANIZER>\\Inbox",
+        "events": [
+          "add",
+          "addDir"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2448,
+        288
+      ],
+      "id": "c5bf788e-e8ab-4860-9207-e6d984f40122",
+      "name": "Local File Trigger"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -2848,
+        176
+      ],
+      "id": "09e6cce8-e195-4b69-93de-19264239bc00",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Command2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command3": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File8",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File9",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File10",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File7": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Extract from File4": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Extract from File10": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File9": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 6
+          }
+        ]
+      ]
+    },
+    "Extract from File8": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Extract from File6": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 9
+          }
+        ]
+      ]
+    },
+    "Extract from File5": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 8
+          }
+        ]
+      ]
+    },
+    "Extract from File3": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Local File Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
